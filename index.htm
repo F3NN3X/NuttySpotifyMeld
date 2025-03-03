@@ -1,14 +1,14 @@
 <!------------------------------------------------->
 <!-- @nuttylmao Spotify widget for Meld Studio   -->
-<!------------------------------------------------->
 <!-- Ported to Meld Studio by F3NN3X Inc.        -->
 <!-- License same as original @nuttylmao widget  -->
+<!-- Version 1.1 - Released March 03, 2025       -->
 <!------------------------------------------------->
 <!DOCTYPE html>
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Nutty Meld Studio Spotify Widget</title>
+    <title>Spotify Widget</title>
     <link rel="shortcut icon" href="#" />
     <script type="text/javascript" src="https://widgets.meldstudio.co/v1/qwebchannel-v1.js"></script>
     <style>
@@ -25,13 +25,18 @@
             position: absolute;
             width: 100vw;
             height: 100vh;
-            margin: 0px;
+            margin: 0;
             background-color: #181818;
             border-radius: 25px;
         }
-        #connectBox{
+
+        #connectBox {
             padding: 24px;
             position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
         }
 
         #mainContainer {
@@ -46,23 +51,21 @@
 
         #albumArtBox {
             position: relative;
-            margin: 0 0 0 0;
-            border-radius: 15px; /* Restored and set to 15px */
+            margin: 0;
+            border-radius: 15px;
         }
 
         #albumArt {
             position: absolute;
-            /* Size controlled by applyStyles() */
-            border-radius: 15px; /* Updated to 15px */
+            border-radius: 15px;
             object-fit: cover;
             top: 50%;
             transform: translateY(-50%);
         }
 
         #albumArtBack {
-            /* Size controlled by applyStyles(), no static values */
             object-fit: cover;
-            visibility: hidden; /* Hide since it’s not used */
+            visibility: hidden;
         }
 
         #songInfoBox {
@@ -72,26 +75,25 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            border-radius: 15px; /* Updated to 15px */
+            border-radius: 15px;
         }
 
         #songInfo {
             z-index: 1;
             padding: 25px;
-
             flex: 1;
             display: flex;
             flex-direction: column;
             gap: 4px;
             overflow: hidden;
-            background: rgba(0, 0, 0, 0.5); /* Default from kSchema */
+            background: rgba(0, 0, 0, 0.5);
         }
 
         #songLabel {
-            font-family: "Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif; /* Default */
-            font-size: 24px; /* Default */
+            font-family: "Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 24px;
             font-weight: bold;
-            color: #ffffff; /* Default */
+            color: #ffffff;
             text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.9);
         }
 
@@ -110,21 +112,21 @@
 
         #progressTime {
             font-family: "Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif;
-            font-size: 20px; /* Updated default */
+            font-size: 20px;
             color: #ffffff;
             text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.9);
         }
 
         #timeRemaining {
             font-family: "Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif;
-            font-size: 20px; /* Updated default */
+            font-size: 20px;
             color: #ffffff;
             text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.9);
         }
 
         #progressBg {
             width: 100%;
-            height: 8px; /* Default */
+            height: 8px;
             background-color: #404040;
             border-radius: 9999px;
             overflow: hidden;
@@ -134,7 +136,7 @@
         #progressBar {
             height: 100%;
             transition: width 0.2s ease-in-out;
-            background-color: #1db954; /* Default */
+            background-color: #1db954;
             border-radius: 9999px;
         }
 
@@ -145,7 +147,7 @@
             width: 100%;
             top: 0;
             left: 0;
-            border-radius: 8px;
+            border-radius: 15px;
             z-index: -1;
             opacity: 0.9;
         }
@@ -158,7 +160,7 @@
             left: 50%;
             transform: translateX(-50%) translateY(-50%);
             object-fit: cover;
-            filter: blur(20px); /* Default */
+            filter: blur(20px);
         }
     </style>
     <script type="text/javascript">
@@ -183,9 +185,10 @@
                 { name: "refreshInterval", type: "int", defaultValue: 1 },
                 { name: "progressBgColor", type: "color", defaultValue: "#404040" },
                 { name: "progressFillColor", type: "color", defaultValue: "#1db954" },
-                { name: "imageSize", type: "int", defaultValue: 140 }, // Increased to 140
+                { name: "imageSize", type: "int", defaultValue: 140 },
                 { name: "progressBarHeight", type: "int", defaultValue: 8 },
-                { name: "blurAmount", type: "int", defaultValue: 20 }
+                { name: "blurAmount", type: "int", defaultValue: 20 },
+                { name: "showAlbumArt", type: "bool", defaultValue: true }
             ],
             controls: [
                 { controlType: "TextField", label: "Spotify URL", property: "spotifyUrl", toolTip: "Paste the full Spotify widget URL here" },
@@ -205,7 +208,8 @@
                 { controlType: "ColorTextField", label: "Progress Bar Fill Color", property: "progressFillColor", showOpacityField: true },
                 { controlType: "SpinBox", label: "Image Size (px)", property: "imageSize", from: 0 },
                 { controlType: "SpinBox", label: "Progress Bar Height (px)", property: "progressBarHeight", from: 0 },
-                { controlType: "SpinBox", label: "Background Blur Amount (px)", property: "blurAmount", from: 0 }
+                { controlType: "SpinBox", label: "Background Blur Amount (px)", property: "blurAmount", from: 0 },
+                { controlType: "Switch", label: "Show Album Art", property: "showAlbumArt" }
             ]
         };
 
@@ -242,10 +246,27 @@
             updateInterval: null
         };
 
+        function loadCachedState() {
+            const cached = localStorage.getItem('spotifyWidgetState');
+            return cached ? JSON.parse(cached) : {};
+        }
+
+        function saveStateToLocalStorage(state) {
+            const stateToSave = {};
+            for (let property of kSchema.properties) {
+                stateToSave[property.name] = state[property.name];
+            }
+            localStorage.setItem('spotifyWidgetState', JSON.stringify(stateToSave));
+            console.log("Saved state to localStorage:", stateToSave);
+        }
+
         function getStatePropertyValues(state) {
             const stateValues = {};
+            const cached = loadCachedState();
             for (let property of kSchema.properties) {
-                stateValues[property.name] = state ? state[property.name] : Widget.cachedPropertyValues[property.name] !== undefined ? Widget.cachedPropertyValues[property.name] : property.defaultValue;
+                stateValues[property.name] = state ? state[property.name] : 
+                    (cached[property.name] !== undefined ? cached[property.name] : 
+                    (Widget.cachedPropertyValues[property.name] !== undefined ? Widget.cachedPropertyValues[property.name] : property.defaultValue));
             }
             return stateValues;
         }
@@ -260,9 +281,9 @@
         }
 
         function applyStyles() {
-            const { trackFontColor, artistFontColor, durationFontColor, trackFontFamily, artistFontFamily, durationFontFamily, trackFontSize, artistFontSize, durationFontSize, backgroundColor, progressBgColor, progressFillColor, imageSize, progressBarHeight, blurAmount } = getStatePropertyValues(Widget.controller?.state);
+            const { trackFontColor, artistFontColor, durationFontColor, trackFontFamily, artistFontFamily, durationFontFamily, trackFontSize, artistFontSize, durationFontSize, backgroundColor, progressBgColor, progressFillColor, imageSize, progressBarHeight, blurAmount, showAlbumArt } = getStatePropertyValues(Widget.controller?.state);
 
-            console.log("Applying styles with values:", { trackFontSize, imageSize, albumArtWidth: Widget.albumArt.style.width, albumArtHeight: Widget.albumArt.style.height });
+            console.log("Applying styles with values:", { trackFontSize, imageSize, showAlbumArt, albumArtWidth: Widget.albumArt.style.width, albumArtHeight: Widget.albumArt.style.height });
 
             Widget.songLabel.style.color = QtColorToBrowserColor(trackFontColor);
             Widget.songLabel.style.fontSize = `${trackFontSize}px`;
@@ -289,6 +310,7 @@
 
             Widget.albumArt.style.width = `${imageSize}px`;
             Widget.albumArt.style.height = `${imageSize}px`;
+            Widget.albumArtBox.style.display = showAlbumArt ? "block" : "none";
             Widget.albumArtBack.style.width = `${imageSize}px`;
             Widget.albumArtBack.style.height = `${imageSize}px`;
             Widget.backgroundImage.style.filter = `blur(${blurAmount}px)`;
@@ -476,12 +498,17 @@
             controller.stateChanged.connect(() => {
                 if (!controller.state || Widget.hasSetupState) return;
                 console.log("State changed, setting up properties...");
+
+                const cached = loadCachedState();
                 for (let propertyData of kSchema.properties) {
-                    Widget.cachedPropertyValues[propertyData.name] = propertyData.defaultValue;
-                    controller.state[propertyData.name] = propertyData.defaultValue;
+                    const cachedValue = cached[propertyData.name];
+                    const initialValue = cachedValue !== undefined ? cachedValue : propertyData.defaultValue;
+                    Widget.cachedPropertyValues[propertyData.name] = initialValue;
+                    controller.state[propertyData.name] = initialValue;
                     controller.state[propertyData.name + "Changed"].connect(() => {
                         Widget.cachedPropertyValues[propertyData.name] = controller.state[propertyData.name];
                         console.log(`Property ${propertyData.name} changed to:`, controller.state[propertyData.name]);
+                        saveStateToLocalStorage(controller.state);
                         applyStyles();
                         if (propertyData.name === "spotifyUrl") {
                             parseSpotifyUrl(controller.state.spotifyUrl);
@@ -551,7 +578,6 @@
             Widget.songInfo = document.getElementById("songInfo");
             Widget.albumArtBox = document.getElementById("albumArtBox");
 
-            // Set initial display values
             Widget.statusContainer.style.display = 'block';
             Widget.statusContainer.style.opacity = "1";
             Widget.mainContainer.style.display = 'none';
@@ -571,7 +597,7 @@
 </head>
 <body>
     <div id="statusContainer">
-        <div id="connectBox" style="align-content: center;">
+        <div id="connectBox">
             <div style="text-align: center;">
                 <img src="https://raw.githubusercontent.com/nuttylmao/spotify-widget/refs/heads/main/configure/logo.webp" width="60%">
             </div>
