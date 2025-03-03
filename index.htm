@@ -2,7 +2,7 @@
 <!-- @nuttylmao Spotify widget for Meld Studio   -->
 <!-- Ported to Meld Studio by F3NN3X Inc.        -->
 <!-- License same as original @nuttylmao widget  -->
-<!-- Version 1.1 - Released March 03, 2025       -->
+<!-- Version 1.0 - Released March 03, 2025       -->
 <!------------------------------------------------->
 <!DOCTYPE html>
 <html>
@@ -521,6 +521,23 @@
                 applyStyles();
                 setupUpdateInterval();
                 fetchSpotifyPlayback();
+            });
+
+            controller.resetProperty.connect((propertyName) => {
+                if (!Widget.hasSetupState) return;
+                for (let property of kSchema.properties) {
+                    if (property.name === propertyName) {
+                        controller.state[property.name] = property.defaultValue;
+                        return;
+                    }
+                }
+                console.warn(`Unable to reset property "${propertyName}"`);
+            });
+            controller.resetAllProperties.connect(() => {
+                if (!Widget.hasSetupState) return;
+                for (let property of kSchema.properties) {
+                    controller.state[property.name] = property.defaultValue;
+                }
             });
 
             controller.schema = kSchema;
