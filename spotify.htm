@@ -1,0 +1,611 @@
+<!------------------------------------------------->
+<!-- @nuttylmao Spotify widget for Meld Studio   -->
+<!------------------------------------------------->
+<!-- Ported to Meld Studio by F3NN3X Inc.        -->
+<!-- License same as original @nuttylmao widget  -->
+<!------------------------------------------------->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Nutty Meld Studio Spotify Widget</title>
+    <link rel="shortcut icon" href="#" />
+    <script type="text/javascript" src="https://widgets.meldstudio.co/v1/qwebchannel-v1.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #statusContainer {
+            position: absolute;
+            width: 100vw;
+            height: 100vh;
+            margin: 0px;
+            background-color: #181818;
+            border-radius: 25px;
+        }
+        #connectBox{
+            padding: 24px;
+            position: absolute;
+        }
+
+        #mainContainer {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            height: auto;
+            width: 100%;
+            padding: 16px;
+            gap: 10px;
+        }
+
+        #albumArtBox {
+            position: relative;
+            margin: 0 0 0 0;
+            border-radius: 15px; /* Restored and set to 15px */
+        }
+
+        #albumArt {
+            position: absolute;
+            /* Size controlled by applyStyles() */
+            border-radius: 15px; /* Updated to 15px */
+            object-fit: cover;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        #albumArtBack {
+            /* Size controlled by applyStyles(), no static values */
+            object-fit: cover;
+            visibility: hidden; /* Hide since it’s not used */
+        }
+
+        #songInfoBox {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-radius: 15px; /* Updated to 15px */
+        }
+
+        #songInfo {
+            z-index: 1;
+            padding: 25px;
+
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.5); /* Default from kSchema */
+        }
+
+        #songLabel {
+            font-family: "Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif; /* Default */
+            font-size: 24px; /* Default */
+            font-weight: bold;
+            color: #ffffff; /* Default */
+            text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.9);
+        }
+
+        #artistLabel {
+            font-family: "Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 16px;
+            color: #ffffff;
+            text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.9);
+        }
+
+        #times {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        #progressTime {
+            font-family: "Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 20px; /* Updated default */
+            color: #ffffff;
+            text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.9);
+        }
+
+        #timeRemaining {
+            font-family: "Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 20px; /* Updated default */
+            color: #ffffff;
+            text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.9);
+        }
+
+        #progressBg {
+            width: 100%;
+            height: 8px; /* Default */
+            background-color: #404040;
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        #progressBar {
+            height: 100%;
+            transition: width 0.2s ease-in-out;
+            background-color: #1db954; /* Default */
+            border-radius: 9999px;
+        }
+
+        #backgroundArt {
+            position: absolute;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            top: 0;
+            left: 0;
+            border-radius: 8px;
+            z-index: -1;
+            opacity: 0.9;
+        }
+
+        #backgroundImage {
+            position: absolute;
+            width: 140%;
+            height: 140%;
+            top: 50%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-50%);
+            object-fit: cover;
+            filter: blur(20px); /* Default */
+        }
+    </style>
+    <script type="text/javascript">
+        'use strict';
+
+        const kSchema = {
+            schemaVersion: 1,
+            name: "Spotify Widget",
+            author: "@nuttylmao (meld port by F3NN3X)",
+            properties: [
+                { name: "spotifyUrl", type: "string", defaultValue: "" },
+                { name: "trackFontColor", type: "color", defaultValue: "#ffffff" },
+                { name: "artistFontColor", type: "color", defaultValue: "#ffffff" },
+                { name: "durationFontColor", type: "color", defaultValue: "#ffffff" },
+                { name: "trackFontFamily", type: "string", defaultValue: '"Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif' },
+                { name: "artistFontFamily", type: "string", defaultValue: '"Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif' },
+                { name: "durationFontFamily", type: "string", defaultValue: '"Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif' },
+                { name: "trackFontSize", type: "int", defaultValue: 24 },
+                { name: "artistFontSize", type: "int", defaultValue: 16 },
+                { name: "durationFontSize", type: "int", defaultValue: 20 },
+                { name: "backgroundColor", type: "color", defaultValue: "rgba(0,0,0,0.5)" },
+                { name: "refreshInterval", type: "int", defaultValue: 1 },
+                { name: "progressBgColor", type: "color", defaultValue: "#404040" },
+                { name: "progressFillColor", type: "color", defaultValue: "#1db954" },
+                { name: "imageSize", type: "int", defaultValue: 140 }, // Increased to 140
+                { name: "progressBarHeight", type: "int", defaultValue: 8 },
+                { name: "blurAmount", type: "int", defaultValue: 20 }
+            ],
+            controls: [
+                { controlType: "TextField", label: "Spotify URL", property: "spotifyUrl", toolTip: "Paste the full Spotify widget URL here" },
+                { controlType: "Separator" },
+                { controlType: "ColorTextField", label: "Track Font Color", property: "trackFontColor", showOpacityField: true },
+                { controlType: "ColorTextField", label: "Artist Font Color", property: "artistFontColor", showOpacityField: true },
+                { controlType: "ColorTextField", label: "Duration Font Color", property: "durationFontColor", showOpacityField: true },
+                { controlType: "FontPicker", label: "Track Font Family", property: "trackFontFamily" },
+                { controlType: "FontPicker", label: "Artist Font Family", property: "artistFontFamily" },
+                { controlType: "FontPicker", label: "Duration Font Family", property: "durationFontFamily" },
+                { controlType: "SpinBox", label: "Track Font Size (px)", property: "trackFontSize", from: 0 },
+                { controlType: "SpinBox", label: "Artist Font Size (px)", property: "artistFontSize", from: 0 },
+                { controlType: "SpinBox", label: "Duration Font Size (px)", property: "durationFontSize", from: 0 },
+                { controlType: "ColorTextField", label: "Background Color", property: "backgroundColor", showOpacityField: true },
+                { controlType: "SpinBox", label: "Refresh Interval (s)", property: "refreshInterval", from: 1 },
+                { controlType: "ColorTextField", label: "Progress Bar Background Color", property: "progressBgColor", showOpacityField: true },
+                { controlType: "ColorTextField", label: "Progress Bar Fill Color", property: "progressFillColor", showOpacityField: true },
+                { controlType: "SpinBox", label: "Image Size (px)", property: "imageSize", from: 0 },
+                { controlType: "SpinBox", label: "Progress Bar Height (px)", property: "progressBarHeight", from: 0 },
+                { controlType: "SpinBox", label: "Background Blur Amount (px)", property: "blurAmount", from: 0 }
+            ]
+        };
+
+        window.Widget = {
+            id: crypto.randomUUID(),
+            socket: null,
+            channel: null,
+            controller: null,
+            hasSetupState: false,
+            cachedPropertyValues: {},
+            statusContainer: null,
+            mainContainer: null,
+            albumArt: null,
+            albumArtBack: null,
+            songLabel: null,
+            artistLabel: null,
+            progressBg: null,
+            progressBar: null,
+            times: null,
+            progressTime: null,
+            timeRemaining: null,
+            backgroundImage: null,
+            songInfoBox: null,
+            songInfo: null,
+            albumArtBox: null,
+            clientId: null,
+            clientSecret: null,
+            refreshToken: null,
+            accessToken: null,
+            lastTrackId: null,
+            lastProgressMs: 0,
+            lastDurationMs: 0,
+            isPlaying: false,
+            updateInterval: null
+        };
+
+        function getStatePropertyValues(state) {
+            const stateValues = {};
+            for (let property of kSchema.properties) {
+                stateValues[property.name] = state ? state[property.name] : Widget.cachedPropertyValues[property.name] !== undefined ? Widget.cachedPropertyValues[property.name] : property.defaultValue;
+            }
+            return stateValues;
+        }
+
+        function QtColorToBrowserColor(qtColor) {
+            if (qtColor && qtColor.length === 9) {
+                const alpha = qtColor.slice(1, 3);
+                const rgb = qtColor.slice(3, 9);
+                return "#" + rgb + alpha;
+            }
+            return qtColor;
+        }
+
+        function applyStyles() {
+            const { trackFontColor, artistFontColor, durationFontColor, trackFontFamily, artistFontFamily, durationFontFamily, trackFontSize, artistFontSize, durationFontSize, backgroundColor, progressBgColor, progressFillColor, imageSize, progressBarHeight, blurAmount } = getStatePropertyValues(Widget.controller?.state);
+
+            console.log("Applying styles with values:", { trackFontSize, imageSize, albumArtWidth: Widget.albumArt.style.width, albumArtHeight: Widget.albumArt.style.height });
+
+            Widget.songLabel.style.color = QtColorToBrowserColor(trackFontColor);
+            Widget.songLabel.style.fontSize = `${trackFontSize}px`;
+            Widget.songLabel.style.fontFamily = trackFontFamily;
+
+            Widget.artistLabel.style.color = QtColorToBrowserColor(artistFontColor);
+            Widget.artistLabel.style.fontSize = `${artistFontSize}px`;
+            Widget.artistLabel.style.fontFamily = artistFontFamily;
+
+            Widget.progressTime.style.color = QtColorToBrowserColor(durationFontColor);
+            Widget.progressTime.style.fontSize = `${durationFontSize}px`;
+            Widget.progressTime.style.fontFamily = durationFontFamily;
+
+            Widget.timeRemaining.style.color = QtColorToBrowserColor(durationFontColor);
+            Widget.timeRemaining.style.fontSize = `${durationFontSize}px`;
+            Widget.timeRemaining.style.fontFamily = durationFontFamily;
+
+            Widget.songInfo.style.backgroundColor = QtColorToBrowserColor(backgroundColor);
+
+            Widget.progressBg.style.height = `${progressBarHeight}px`;
+            Widget.progressBg.style.backgroundColor = QtColorToBrowserColor(progressBgColor);
+
+            Widget.progressBar.style.backgroundColor = QtColorToBrowserColor(progressFillColor);
+
+            Widget.albumArt.style.width = `${imageSize}px`;
+            Widget.albumArt.style.height = `${imageSize}px`;
+            Widget.albumArtBack.style.width = `${imageSize}px`;
+            Widget.albumArtBack.style.height = `${imageSize}px`;
+            Widget.backgroundImage.style.filter = `blur(${blurAmount}px)`;
+        }
+
+        function formatTime(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        async function refreshAccessToken() {
+            const { clientId, clientSecret, refreshToken } = Widget;
+            if (!clientId || !clientSecret || !refreshToken) return;
+
+            const response = await fetch('https://accounts.spotify.com/api/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret)
+                },
+                body: new URLSearchParams({
+                    grant_type: 'refresh_token',
+                    refresh_token: refreshToken
+                })
+            });
+
+            const data = await response.json();
+            if (data.access_token) {
+                Widget.accessToken = data.access_token;
+            } else {
+                console.error('Failed to refresh token:', data);
+                Widget.songLabel.innerHTML = "Error refreshing Spotify token.";
+            }
+        }
+
+        async function fetchSpotifyPlayback() {
+            const { clientId, clientSecret, refreshToken } = Widget;
+            console.log("Fetching playback with:", { clientId, clientSecret, refreshToken });
+            if (!clientId || !clientSecret || !refreshToken) {
+                Widget.statusContainer.style.display = 'block';
+                Widget.statusContainer.style.opacity = "1";
+                Widget.mainContainer.style.display = 'none';
+                Widget.songLabel.innerHTML = "Paste your Spotify URL in the Meld Studio properties panel.";
+                Widget.artistLabel.innerHTML = "";
+                Widget.progressTime.innerHTML = "";
+                Widget.timeRemaining.innerHTML = "";
+                Widget.albumArt.src = '';
+                Widget.progressBar.style.width = '0%';
+                Widget.backgroundImage.src = '';
+                return;
+            }
+
+            if (!Widget.accessToken) {
+                await refreshAccessToken();
+                if (!Widget.accessToken) return;
+            }
+
+            try {
+                const response = await fetch('https://api.spotify.com/v1/me/player', {
+                    headers: { 'Authorization': `Bearer ${Widget.accessToken}` }
+                });
+
+                if (response.status === 401) {
+                    await refreshAccessToken();
+                    return fetchSpotifyPlayback();
+                }
+
+                if (!response.ok) {
+                    Widget.statusContainer.style.display = 'none';
+                    Widget.statusContainer.style.opacity = "0";
+                    Widget.mainContainer.style.display = 'flex';
+                    Widget.songLabel.innerHTML = "No playback detected.";
+                    Widget.artistLabel.innerHTML = "Open Spotify to start playing music.";
+                    Widget.progressTime.innerHTML = "";
+                    Widget.timeRemaining.innerHTML = "";
+                    Widget.albumArt.src = '';
+                    Widget.progressBar.style.width = '0%';
+                    Widget.backgroundImage.src = '';
+                    return;
+                }
+
+                const data = await response.json();
+                if (data && data.item) {
+                    const track = data.item;
+                    Widget.lastTrackId = track.id;
+                    Widget.lastProgressMs = data.progress_ms;
+                    Widget.lastDurationMs = track.duration_ms;
+                    Widget.isPlaying = data.is_playing;
+
+                    Widget.statusContainer.style.display = 'none';
+                    Widget.statusContainer.style.opacity = "0";
+                    Widget.mainContainer.style.display = 'flex';
+                    Widget.songLabel.innerHTML = track.name;
+                    Widget.artistLabel.innerHTML = track.artists.map(a => a.name).join(', ');
+                    Widget.progressTime.innerHTML = formatTime(Widget.lastProgressMs);
+                    Widget.timeRemaining.innerHTML = `-${formatTime(Widget.lastDurationMs - Widget.lastProgressMs)}`;
+                    const albumArtUrl = track.album.images[0]?.url || '';
+                    console.log("Setting albumArt.src to:", albumArtUrl);
+                    Widget.albumArt.src = albumArtUrl;
+                    Widget.progressBar.style.width = `${(Widget.lastProgressMs / Widget.lastDurationMs) * 100}%`;
+                    Widget.backgroundImage.src = albumArtUrl;
+                } else {
+                    Widget.statusContainer.style.display = 'none';
+                    Widget.statusContainer.style.opacity = "0";
+                    Widget.mainContainer.style.display = 'flex';
+                    Widget.songLabel.innerHTML = "No track playing.";
+                    Widget.artistLabel.innerHTML = "Open Spotify to start playing music.";
+                    Widget.progressTime.innerHTML = "";
+                    Widget.timeRemaining.innerHTML = "";
+                    Widget.albumArt.src = '';
+                    Widget.progressBar.style.width = '0%';
+                    Widget.backgroundImage.src = '';
+                }
+            } catch (error) {
+                console.error('Error fetching Spotify data:', error);
+                Widget.statusContainer.style.display = 'none';
+                Widget.statusContainer.style.opacity = "0";
+                Widget.mainContainer.style.display = 'flex';
+                Widget.songLabel.innerHTML = "Error fetching Spotify data.";
+                Widget.artistLabel.innerHTML = "";
+                Widget.progressTime.innerHTML = "";
+                Widget.timeRemaining.innerHTML = "";
+                Widget.albumArt.src = '';
+                Widget.progressBar.style.width = '0%';
+                Widget.backgroundImage.src = '';
+            }
+        }
+
+        function parseSpotifyUrl(url) {
+            try {
+                const params = new URLSearchParams(new URL(url).search);
+                Widget.clientId = params.get('client_id');
+                Widget.clientSecret = params.get('client_secret');
+                Widget.refreshToken = params.get('refresh_token');
+                console.log("Parsed URL:", Widget.clientId, Widget.clientSecret, Widget.refreshToken);
+                if (!Widget.clientId || !Widget.clientSecret || !Widget.refreshToken) {
+                    throw new Error("Missing required parameters.");
+                }
+            } catch (error) {
+                console.error('Invalid Spotify URL:', error);
+                Widget.songLabel.innerHTML = "Invalid Spotify URL. Please check and update in the properties panel.";
+                Widget.clientId = null;
+                Widget.clientSecret = null;
+                Widget.refreshToken = null;
+                Widget.accessToken = null;
+            }
+        }
+
+        function setupUpdateInterval() {
+            if (Widget.updateInterval) clearInterval(Widget.updateInterval);
+            const { refreshInterval } = getStatePropertyValues(Widget.controller?.state);
+            Widget.updateInterval = setInterval(() => {
+                if (Widget.isPlaying) {
+                    Widget.lastProgressMs += 1000;
+                    if (Widget.lastProgressMs >= Widget.lastDurationMs) {
+                        Widget.lastProgressMs = Widget.lastDurationMs;
+                        fetchSpotifyPlayback();
+                    }
+                    Widget.progressBar.style.width = `${(Widget.lastProgressMs / Widget.lastDurationMs) * 100}%`;
+                    Widget.progressTime.innerHTML = formatTime(Widget.lastProgressMs);
+                    Widget.timeRemaining.innerHTML = `-${formatTime(Widget.lastDurationMs - Widget.lastProgressMs)}`;
+                }
+                fetchSpotifyPlayback();
+            }, refreshInterval * 1000);
+        }
+
+        function widgetControllerInit(controller) {
+            if (!controller) {
+                console.error("Controller object is undefined!");
+                return;
+            }
+            Widget.controller = controller;
+            console.log("Controller initialized:", controller);
+
+            controller.connectedClientId = Widget.id;
+
+            controller.connectedClientIdChanged = () => {
+                if (Widget.socket && Widget.id !== controller.connectedClientId) {
+                    Widget.socket.close(1000, "Another client connected.");
+                }
+            };
+
+            controller.stateChanged.connect(() => {
+                if (!controller.state || Widget.hasSetupState) return;
+                console.log("State changed, setting up properties...");
+                for (let propertyData of kSchema.properties) {
+                    Widget.cachedPropertyValues[propertyData.name] = propertyData.defaultValue;
+                    controller.state[propertyData.name] = propertyData.defaultValue;
+                    controller.state[propertyData.name + "Changed"].connect(() => {
+                        Widget.cachedPropertyValues[propertyData.name] = controller.state[propertyData.name];
+                        console.log(`Property ${propertyData.name} changed to:`, controller.state[propertyData.name]);
+                        applyStyles();
+                        if (propertyData.name === "spotifyUrl") {
+                            parseSpotifyUrl(controller.state.spotifyUrl);
+                            fetchSpotifyPlayback();
+                        }
+                        if (propertyData.name === "refreshInterval") setupUpdateInterval();
+                    });
+                }
+                Widget.hasSetupState = true;
+                applyStyles();
+                setupUpdateInterval();
+                fetchSpotifyPlayback();
+            });
+
+            controller.schema = kSchema;
+        }
+
+        function connectSocket() {
+            const params = new URLSearchParams(window.location.search);
+            const address = params.get("address") ?? "127.0.0.1";
+            const port = params.get("port") ?? "13376";
+            const widgetId = params.get("widget_id") ?? "spotifyWidget";
+            console.log("Connecting to WebSocket at:", `ws://${address}:${port}`);
+            console.log("Using widget_id:", widgetId);
+            const socket = new WebSocket(`ws://${address}:${port}`);
+            Widget.socket = socket;
+
+            socket.onopen = () => {
+                console.log('Meld Studio Connected!');
+                Widget.channel = new QWebChannel(socket, (channel) => {
+                    console.log("QWebChannel objects:", Object.keys(channel.objects));
+                    const controller = channel.objects[widgetId];
+                    if (controller) {
+                        console.log(`Found controller for widget_id: ${widgetId}`);
+                        widgetControllerInit(controller);
+                    } else {
+                        console.error(`No controller object found for widget_id: ${widgetId}`);
+                        console.log("Available QWebChannel objects:", Object.keys(channel.objects));
+                    }
+                });
+            };
+
+            socket.onclose = (event) => {
+                console.log("WebSocket closed. Code:", event.code, "Reason:", event.reason || "No reason provided", "Retrying in 1s...");
+                setTimeout(connectSocket, 1000);
+            };
+
+            socket.onerror = (error) => {
+                console.error("WebSocket error:", error);
+            };
+        }
+
+        window.onload = () => {
+            Widget.statusContainer = document.getElementById("statusContainer");
+            Widget.mainContainer = document.getElementById("mainContainer");
+            Widget.albumArt = document.getElementById("albumArt");
+            Widget.albumArtBack = document.getElementById("albumArtBack");
+            Widget.songLabel = document.getElementById("songLabel");
+            Widget.artistLabel = document.getElementById("artistLabel");
+            Widget.progressBg = document.getElementById("progressBg");
+            Widget.progressBar = document.getElementById("progressBar");
+            Widget.times = document.getElementById("times");
+            Widget.progressTime = document.getElementById("progressTime");
+            Widget.timeRemaining = document.getElementById("timeRemaining");
+            Widget.backgroundImage = document.getElementById("backgroundImage");
+            Widget.songInfoBox = document.getElementById("songInfoBox");
+            Widget.songInfo = document.getElementById("songInfo");
+            Widget.albumArtBox = document.getElementById("albumArtBox");
+
+            // Set initial display values
+            Widget.statusContainer.style.display = 'block';
+            Widget.statusContainer.style.opacity = "1";
+            Widget.mainContainer.style.display = 'none';
+            Widget.songLabel.innerHTML = "Waiting for Spotify...";
+            Widget.artistLabel.innerHTML = "No Artist";
+            Widget.progressTime.innerHTML = "0:00";
+            Widget.timeRemaining.innerHTML = "0:00";
+            Widget.albumArt.src = 'https://via.placeholder.com/150';
+            Widget.progressBar.style.width = '0%';
+            Widget.backgroundImage.src = 'https://via.placeholder.com/150';
+
+            connectSocket();
+            applyStyles();
+            fetchSpotifyPlayback();
+        };
+    </script>
+</head>
+<body>
+    <div id="statusContainer">
+        <div id="connectBox" style="align-content: center;">
+            <div style="text-align: center;">
+                <img src="https://raw.githubusercontent.com/nuttylmao/spotify-widget/refs/heads/main/configure/logo.webp" width="60%">
+            </div>
+            <p style="font-weight: 200; color: #ffffff; text-align: center;">@nuttylmao Spotify Widget - Meld Studio port by F3NN3X</p>            
+            <label>
+                <br>
+                <span style="font-weight: 500; color: #ffffff;">Follow @nuttylmao instructions on how to obtain your keys, when you get the URL to paste in OBS, paste that URL in the Spotify URL field and tap enter</span>
+                <br>
+            </label>
+        </div>
+    </div>
+    <div id="mainContainer">
+        <div id="albumArtBox">
+            <img id="albumArt" />
+            <img id="albumArtBack" />
+        </div>
+        <div id="songInfoBox">
+            <div id="songInfo">
+                <div id="IAmRunningOutOfNamesForTheseBoxes">
+                    <div id="songLabel"></div>
+                    <div id="artistLabel"></div>
+                    <div id="times">
+                        <div id="progressTime"></div>
+                        <div id="timeRemaining"></div>
+                    </div>
+                    <div id="progressBg">
+                        <div id="progressBar"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="backgroundArt">
+                <img id="backgroundImage" />
+            </div>
+        </div>
+    </div>
+</body>
+</html>
