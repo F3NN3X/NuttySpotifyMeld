@@ -1,4 +1,4 @@
-# Spotify Widget for Meld Studio
+# Nutty Spotify Widget for Meld Studio
 
 A sleek, customizable Spotify widget for Meld Studio, ported from [@nuttylmao](https://nuttylmao.notion.site/Spotify-Widget-18e19969b237807ca88cfc9c4159da15)'s original widget by F3NN3X. Display your currently playing Spotify track with album art, song info, and a progress bar—perfect for streamers and creators.
 
